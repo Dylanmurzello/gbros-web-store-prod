@@ -1,0 +1,33 @@
+{
+  "name": "gbros-shop",
+  "version": "0.7.0",
+  "private": true,
+  "scripts": {
+    "dev:server": "ts-node ./src/index.ts",
+    "dev:worker": "ts-node ./src/index-worker.ts",
+    "dev": "concurrently npm:dev:*",
+    "build": "tsc",
+    "start:server": "node ./dist/index.js",
+    "start:worker": "node ./dist/index-worker.js",
+    "start": "concurrently npm:start:*"
+  },
+  "dependencies": {
+    "@square/web-payments-sdk-types": "^1.78.5",
+    "@vendure/admin-ui-plugin": "3.4.2",
+    "@vendure/asset-server-plugin": "3.4.2",
+    "@vendure/core": "3.4.2",
+    "@vendure/email-plugin": "3.4.2",
+    "@vendure/graphiql-plugin": "3.4.2",
+    "@vendure/harden-plugin": "^3.4.2",
+    "axios": "^1.12.2",
+    "dotenv": "17.2.2",
+    "google-auth-library": "^10.3.0",
+    "pg": "8.16.3",
+    "square": "^43.1.0"
+  },
+  "devDependencies": {
+    "@vendure/cli": "3.4.2",
+    "concurrently": "9.2.1",
+    "typescript": "5.8.2"
+  }
+}

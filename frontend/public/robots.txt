@@ -1,0 +1,20 @@
+# Robots.txt for Gbros Store
+# https://gbrosapp.com
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /shop-api/
+Disallow: /admin-api/
+Disallow: /_next/
+Disallow: /checkout
+Disallow: /cart
+Disallow: /order-confirmation
+
+# Block common vulnerability scanners
+User-agent: Nuclei
+User-agent: sqlmap
+Disallow: /
+
+# Sitemap
+Sitemap: https://gbrosapp.com/sitemap.xml

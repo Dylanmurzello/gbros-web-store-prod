@@ -1,0 +1,109 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Production builds
+/backend/dist/
+/backend/admin-ui/
+/frontend/.next/
+/frontend/out/
+/frontend/build/
+
+# Environment files (NEVER commit these!)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+/backend/.env*
+/frontend/.env*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Logs
+*.log
+logs/
+/backend/vendure.log*
+/backend/static/email/test-emails/
+
+# Database files
+*.sqlite
+*.db
+
+# Backend specific ignores
+/backend/static/assets/
+/backend/static/email/test-emails/
+
+# Frontend specific ignores  
+/frontend/.next/
+/frontend/next-env.d.ts
+
+# TypeScript
+*.tsbuildinfo
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+
+# Temporary folders
+tmp/
+temp/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Yarn
+.yarn-integrity
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Docker
+.dockerignore
+
+# Infrastructure & Deployment (keep configs with secrets local)
+*.pem
+*.crt
+*.key
+
+# Documentation dump (not tracked - working notes only)
+/info_dump/
+
+
+# Documentation and scripts (local only)
+COMMIT_CHANGELOG.md
+VERSION.md
+names-used.md
+scripts-dump/
+test-*.sh
+test-*.js
+SQUARE_PAYMENT_INTEGRATION.md
