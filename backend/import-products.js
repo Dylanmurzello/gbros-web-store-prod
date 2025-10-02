@@ -41,10 +41,9 @@ const log = {
 
 // Config with defaults
 const config = {
-    inputCsv: '/root/JDS-Master-Data-2025-09-18.csv',
-    testInputCsv: '/root/JDS-test-sample.csv',
-    outputCsv: '/root/vendure-products.csv',
-    testOutputCsv: '/root/vendure-products-test.csv',
+    inputCsv: '/root/JDS-Master-Data-2025-09-18.csv',  // Main data file
+    outputCsv: '/root/vendure-products.csv',            // Full import output
+    testOutputCsv: '/root/vendure-products-test.csv',  // Test mode output (10 rows)
 };
 
 // Create readline interface for user input
@@ -77,7 +76,7 @@ async function main() {
     
     // Step 3: Transform CSV
     log.title('STEP 1: TRANSFORMING CSV');
-    const rowCount = await transformCsv(inputPath, outputPath);
+    const rowCount = await transformCsv(inputPath, outputPath, mode);
     
     // Step 4: Ask if they wanna import
     const shouldImport = await askShouldImport();
@@ -113,18 +112,20 @@ async function main() {
  */
 async function askMode() {
     log.step('Choose import mode:');
-    console.log('  1) Test mode (10 products)');
-    console.log('  2) Full import (83,371 products) - THIS WILL TAKE A WHILE! ⏰');
+    console.log('  1) Test mode (first 10 rows from file)');
+    console.log('  2) Full import (all rows, ~33k unique products after dedup)');
+    console.log('     ⚠️  Full import will take 30+ minutes! ⏰');
     
     const answer = await question('\nEnter choice (1 or 2): ');
     
     if (answer.trim() === '2') {
-        log.warn('Full import selected! This will import 83k+ products.');
+        log.warn('Full import selected! This will process ~69k rows.');
+        log.warn('After deduplication: ~33k unique products.');
         log.warn('This could take 30+ minutes depending on your connection!');
         const confirm = await question('Are you SURE? (yes/no): ');
         
         if (confirm.toLowerCase() !== 'yes') {
-            log.info('Switching to test mode...');
+            log.info('Switching to test mode (first 10 rows)...');
             return 'test';
         }
         return 'full';
@@ -138,10 +139,14 @@ async function askMode() {
  */
 async function askFilePaths(mode) {
     const isTest = mode === 'test';
-    const defaultInput = isTest ? config.testInputCsv : config.inputCsv;
+    const defaultInput = config.inputCsv; // Always use main file
     const defaultOutput = isTest ? config.testOutputCsv : config.outputCsv;
     
     log.step('Configure file paths:');
+    
+    if (isTest) {
+        console.log(`${colors.cyan}Test mode will process first 10 rows from the file${colors.reset}`);
+    }
     
     const inputAnswer = await question(`Input CSV path (press enter for: ${defaultInput}): `);
     const inputPath = inputAnswer.trim() || defaultInput;
@@ -158,23 +163,35 @@ async function askFilePaths(mode) {
     log.success(`Input: ${inputPath}`);
     log.success(`Output: ${outputPath}`);
     
+    if (isTest) {
+        log.info('Will process first 10 rows only (test mode)');
+    }
+    
     return { inputPath, outputPath };
 }
 
 /**
  * Transform CSV from JDS format to Vendure format
+ * NOW WITH DEDUPLICATION! Keeps last occurrence of each SKU (newest catalogue data wins)
  */
-async function transformCsv(inputPath, outputPath) {
+async function transformCsv(inputPath, outputPath, mode = 'full') {
     log.info('Reading JDS CSV file...');
     
     const csvContent = fs.readFileSync(inputPath, 'utf-8');
-    const jdsRows = parse(csvContent, {
+    let jdsRows = parse(csvContent, {
         columns: true,
         skip_empty_lines: true,
         trim: true
     });
     
     log.success(`Found ${jdsRows.length} products in JDS CSV`);
+    
+    // TEST MODE: Take only first 10 rows (before deduplication)
+    if (mode === 'test') {
+        log.warn('TEST MODE: Limiting to first 10 rows from file');
+        jdsRows = jdsRows.slice(0, 10);
+        log.success(`Processing ${jdsRows.length} rows for test import`);
+    }
     
     log.info('Transforming data to Vendure format...');
     
@@ -203,8 +220,23 @@ async function transformCsv(inputPath, outputPath) {
     
     log.success(`Transformed ${vendureRows.length} products`);
     
+    // DEDUPLICATE by SKU (keep LAST occurrence = newest catalogue)
+    log.info('Deduplicating products by SKU (keeping latest data)...');
+    const originalCount = vendureRows.length;
+    const deduped = deduplicateBySku(vendureRows);
+    const duplicatesRemoved = originalCount - deduped.length;
+    
+    if (duplicatesRemoved > 0) {
+        log.warn(`Removed ${duplicatesRemoved} duplicate SKUs (kept latest)`);
+        log.success(`Final unique products: ${deduped.length}`);
+    } else {
+        log.success('No duplicates found!');
+    }
+    
+    const finalRows = deduped;
+    
     log.info('Writing Vendure CSV file...');
-    const vendureCsv = stringify(vendureRows, {
+    const vendureCsv = stringify(finalRows, {
         header: true,
         quoted: true,
         quoted_empty: true
@@ -213,7 +245,7 @@ async function transformCsv(inputPath, outputPath) {
     fs.writeFileSync(outputPath, vendureCsv, 'utf-8');
     log.success(`Vendure CSV written to: ${outputPath}`);
     
-    return vendureRows.length;
+    return finalRows.length;
 }
 
 /**
@@ -229,8 +261,12 @@ async function askShouldImport() {
  */
 async function askShouldClearDb() {
     log.warn('IMPORTANT: Should we clear the database before importing?');
-    console.log('  - YES: Deletes all existing products (clean slate)');
-    console.log('  - NO: Adds new products alongside existing ones');
+    console.log('  - YES: Deletes all existing products (clean slate) ✨');
+    console.log('  - NO: Keeps existing + adds new ones');
+    console.log('');
+    console.log(`${colors.yellow}NOTE: Vendure's populate() doesn't do true UPSERT!${colors.reset}`);
+    console.log(`${colors.yellow}If a SKU already exists, that row will be SKIPPED.${colors.reset}`);
+    console.log(`${colors.cyan}To truly update existing products, you'd need custom import logic.${colors.reset}`);
     
     const answer = await question('\nClear database first? (yes/no): ');
     return answer.toLowerCase() === 'yes' || answer.toLowerCase() === 'y';
@@ -300,7 +336,25 @@ async function runImport(csvPath) {
     });
 }
 
-// === UTILITY FUNCTIONS (same as before) ===
+// === UTILITY FUNCTIONS ===
+
+/**
+ * Deduplicate products by SKU (keeps LAST occurrence)
+ * When same SKU appears multiple times (different catalogues),
+ * we keep the latest one = newest catalogue data wins! 📅
+ */
+function deduplicateBySku(products) {
+    const skuMap = new Map();
+    
+    // Iterate through all products
+    // Map.set() will overwrite if key exists = keeps LAST occurrence
+    products.forEach(product => {
+        skuMap.set(product.sku, product);
+    });
+    
+    // Convert Map back to array
+    return Array.from(skuMap.values());
+}
 
 function createSlug(name) {
     if (!name) return 'product';
