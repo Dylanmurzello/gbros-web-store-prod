@@ -244,6 +244,7 @@ static_resources:
               # SECURITY FIX: 2025-09-30 - Same exploit blocking for HTTPS traffic 🔒
               # Block WebDAV methods
               - match:
+                  prefix: "/"
                   headers:
                   - name: ":method"
                     string_match:
@@ -311,19 +312,151 @@ static_resources:
                 direct_response:
                   status: 404
               
-              # Admin API routes
+              # RATE LIMITING FIX: 2025-10-02 - Per-route rate limiting so static assets don't get throttled 🎯
+              # Modern web apps make TONS of requests (Next.js chunks, images, etc) - we gotta be smart about limits
+              
+              # Next.js static assets - NO RATE LIMITING (these are just files bestie)
+              - match:
+                  prefix: "/_next/static/"
+                route:
+                  cluster: nextjs_frontend
+                  timeout: 30s
+                typed_per_filter_config:
+                  envoy.filters.http.local_ratelimit:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                    stat_prefix: static_assets_no_limit
+                    token_bucket:
+                      max_tokens: 100000
+                      tokens_per_fill: 100000
+                      fill_interval: 60s
+                    filter_enabled:
+                      default_value:
+                        numerator: 0
+                        denominator: HUNDRED
+              
+              # Next.js image optimization - NO RATE LIMITING 
+              - match:
+                  prefix: "/_next/image"
+                route:
+                  cluster: nextjs_frontend
+                  timeout: 30s
+                typed_per_filter_config:
+                  envoy.filters.http.local_ratelimit:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                    stat_prefix: images_no_limit
+                    token_bucket:
+                      max_tokens: 100000
+                      tokens_per_fill: 100000
+                      fill_interval: 60s
+                    filter_enabled:
+                      default_value:
+                        numerator: 0
+                        denominator: HUNDRED
+              
+              # Next.js dev tools - NO RATE LIMITING (but should block in prod later)
+              - match:
+                  prefix: "/__nextjs"
+                route:
+                  cluster: nextjs_frontend
+                  timeout: 30s
+                typed_per_filter_config:
+                  envoy.filters.http.local_ratelimit:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                    stat_prefix: nextjs_dev_no_limit
+                    token_bucket:
+                      max_tokens: 100000
+                      tokens_per_fill: 100000
+                      fill_interval: 60s
+                    filter_enabled:
+                      default_value:
+                        numerator: 0
+                        denominator: HUNDRED
+              
+              # Static images - NO RATE LIMITING
+              - match:
+                  prefix: "/images/"
+                route:
+                  cluster: nextjs_frontend
+                  timeout: 30s
+                typed_per_filter_config:
+                  envoy.filters.http.local_ratelimit:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                    stat_prefix: static_images_no_limit
+                    token_bucket:
+                      max_tokens: 100000
+                      tokens_per_fill: 100000
+                      fill_interval: 60s
+                    filter_enabled:
+                      default_value:
+                        numerator: 0
+                        denominator: HUNDRED
+              
+              # Favicon - NO RATE LIMITING (browsers spam this constantly lmao)
+              - match:
+                  prefix: "/favicon.ico"
+                route:
+                  cluster: nextjs_frontend
+                  timeout: 5s
+                typed_per_filter_config:
+                  envoy.filters.http.local_ratelimit:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                    stat_prefix: favicon_no_limit
+                    token_bucket:
+                      max_tokens: 100000
+                      tokens_per_fill: 100000
+                      fill_interval: 60s
+                    filter_enabled:
+                      default_value:
+                        numerator: 0
+                        denominator: HUNDRED
+              
+              # Admin API routes - LOOSE LIMIT (500/min, let Vendure HardenPlugin handle the real throttling)
               - match:
                   prefix: "/admin-api"
                 route:
                   cluster: vendure_backend
                   timeout: 30s
-              # Admin UI routes
+                typed_per_filter_config:
+                  envoy.filters.http.local_ratelimit:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                    stat_prefix: admin_api_rate_limiter
+                    token_bucket:
+                      max_tokens: 500
+                      tokens_per_fill: 500
+                      fill_interval: 60s
+                    filter_enabled:
+                      default_value:
+                        numerator: 100
+                        denominator: HUNDRED
+                    filter_enforced:
+                      default_value:
+                        numerator: 100
+                        denominator: HUNDRED
+              
+              # Admin UI routes - MEDIUM LIMIT (200/min for authenticated admin users)
               - match:
                   prefix: "/admin"
                 route:
                   cluster: vendure_admin_ui
                   timeout: 30s
-              # Shop API routes
+                typed_per_filter_config:
+                  envoy.filters.http.local_ratelimit:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                    stat_prefix: admin_ui_rate_limiter
+                    token_bucket:
+                      max_tokens: 200
+                      tokens_per_fill: 200
+                      fill_interval: 60s
+                    filter_enabled:
+                      default_value:
+                        numerator: 100
+                        denominator: HUNDRED
+                    filter_enforced:
+                      default_value:
+                        numerator: 100
+                        denominator: HUNDRED
+              
+              # Shop API routes - LOOSE LIMIT (500/min, Vendure HardenPlugin does smart throttling based on query complexity)
               - match:
                   prefix: "/shop-api"
                 route:
@@ -338,24 +471,87 @@ static_resources:
                     key: "X-Forwarded-Proto"
                     value: "https"
                   append: false
-              # Assets and static files from backend
+                typed_per_filter_config:
+                  envoy.filters.http.local_ratelimit:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                    stat_prefix: shop_api_rate_limiter
+                    token_bucket:
+                      max_tokens: 500
+                      tokens_per_fill: 500
+                      fill_interval: 60s
+                    filter_enabled:
+                      default_value:
+                        numerator: 100
+                        denominator: HUNDRED
+                    filter_enforced:
+                      default_value:
+                        numerator: 100
+                        denominator: HUNDRED
+              
+              # Assets and static files from backend - NO RATE LIMITING (CDN images/files)
               - match:
                   prefix: "/assets"
                 route:
                   cluster: vendure_backend
                   timeout: 30s
-              # Health check endpoint
+                typed_per_filter_config:
+                  envoy.filters.http.local_ratelimit:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                    stat_prefix: backend_assets_no_limit
+                    token_bucket:
+                      max_tokens: 100000
+                      tokens_per_fill: 100000
+                      fill_interval: 60s
+                    filter_enabled:
+                      default_value:
+                        numerator: 0
+                        denominator: HUNDRED
+              
+              # Health check endpoint - LOOSE LIMIT (1000/min, monitoring systems hit this frequently)
               - match:
                   prefix: "/health"
                 route:
                   cluster: vendure_backend
                   timeout: 5s
-              # Frontend routes (catch-all)
+                typed_per_filter_config:
+                  envoy.filters.http.local_ratelimit:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                    stat_prefix: health_check_rate_limiter
+                    token_bucket:
+                      max_tokens: 1000
+                      tokens_per_fill: 1000
+                      fill_interval: 60s
+                    filter_enabled:
+                      default_value:
+                        numerator: 100
+                        denominator: HUNDRED
+                    filter_enforced:
+                      default_value:
+                        numerator: 100
+                        denominator: HUNDRED
+              
+              # Frontend routes (catch-all) - MEDIUM LIMIT (200/min for page loads, prevents spam but allows normal browsing)
               - match:
                   prefix: "/"
                 route:
                   cluster: nextjs_frontend
                   timeout: 30s
+                typed_per_filter_config:
+                  envoy.filters.http.local_ratelimit:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                    stat_prefix: frontend_pages_rate_limiter
+                    token_bucket:
+                      max_tokens: 200
+                      tokens_per_fill: 200
+                      fill_interval: 60s
+                    filter_enabled:
+                      default_value:
+                        numerator: 100
+                        denominator: HUNDRED
+                    filter_enforced:
+                      default_value:
+                        numerator: 100
+                        denominator: HUNDRED
           http_filters:
           - name: envoy.filters.http.cors
             typed_config:
