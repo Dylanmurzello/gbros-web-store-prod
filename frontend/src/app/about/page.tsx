@@ -244,10 +244,10 @@ export default function AboutPage() {
                 </div>
                 <div className="mt-14 flex justify-end gap-8 sm:-mt-44 sm:justify-start sm:pl-20 lg:mt-0 lg:pl-0">
                   <div className="ml-auto w-44 flex-none space-y-8 pt-32 sm:ml-0 sm:pt-80 lg:order-last lg:pt-36 xl:order-none xl:pt-80">
-                    <div className="relative">
+                    <div className="relative aspect-[2/3]">
                       <Image
-                fill
-                sizes="(max-width: 640px) 100vw, 50vw"
+                        fill
+                        sizes="(max-width: 640px) 100vw, 50vw"
                         alt=""
                         src="https://images.unsplash.com/photo-1578662996442-48f60103fc27?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&h=528&q=80"
                         className="rounded-xl bg-gray-900/5 object-cover shadow-lg"
@@ -256,42 +256,42 @@ export default function AboutPage() {
                     </div>
                   </div>
                   <div className="mr-auto w-44 flex-none space-y-8 sm:mr-0 sm:pt-52 lg:pt-36">
-                    <div className="relative">
+                    <div className="relative aspect-[2/3]">
                       <Image
-                fill
-                sizes="(max-width: 640px) 100vw, 50vw"
+                        fill
+                        sizes="(max-width: 640px) 100vw, 50vw"
                         alt=""
                         src="https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&h=528&q=80"
                         className="rounded-xl bg-gray-900/5 object-cover shadow-lg"
                       />
                       <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-gray-900/10" />
                     </div>
-                    <div className="relative">
+                    <div className="relative aspect-[2/3]">
                       <Image
-                fill
-                sizes="(max-width: 640px) 100vw, 50vw"
+                        fill
+                        sizes="(max-width: 640px) 100vw, 50vw"
                         alt=""
-                        src="https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&crop=focalpoint&fp-x=.4&w=396&h=528&q=80"
+                        src="https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by3wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&crop=focalpoint&fp-x=.4&w=396&h=528&q=80"
                         className="rounded-xl bg-gray-900/5 object-cover shadow-lg"
                       />
                       <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-gray-900/10" />
                     </div>
                   </div>
                   <div className="w-44 flex-none space-y-8 pt-32 sm:pt-0">
-                    <div className="relative">
+                    <div className="relative aspect-[2/3]">
                       <Image
-                fill
-                sizes="(max-width: 640px) 100vw, 50vw"
+                        fill
+                        sizes="(max-width: 640px) 100vw, 50vw"
                         alt=""
                         src="https://images.unsplash.com/photo-1569163139394-de4798aa62b6?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&crop=left&w=400&h=528&q=80"
                         className="rounded-xl bg-gray-900/5 object-cover shadow-lg"
                       />
                       <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-gray-900/10" />
                     </div>
-                    <div className="relative">
+                    <div className="relative aspect-[2/3]">
                       <Image
-                fill
-                sizes="(max-width: 640px) 100vw, 50vw"
+                        fill
+                        sizes="(max-width: 640px) 100vw, 50vw"
                         alt=""
                         src="https://images.unsplash.com/photo-1567013127542-490d757e51fc?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&h=528&q=80"
                         className="rounded-xl bg-gray-900/5 object-cover shadow-lg"
@@ -338,13 +338,15 @@ export default function AboutPage() {
 
         {/* Hero image section - the big visual moment */}
         <div className="mt-32 sm:mt-40 xl:mx-auto xl:max-w-7xl xl:px-8">
-          <Image
-                fill
-                sizes="(max-width: 640px) 100vw, 50vw"
-            alt=""
-            src="https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2832&q=80"
-            className="object-cover xl:rounded-3xl"
-          />
+          <div className="relative aspect-[16/9]">
+            <Image
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1280px) 100vw, 1280px"
+              alt=""
+              src="https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2832&q=80"
+              className="object-cover xl:rounded-3xl"
+            />
+          </div>
         </div>
 
         {/* Values section - what we stand for */}
@@ -448,8 +450,13 @@ export default function AboutPage() {
             {team.map((person) => (
               <li key={person.name}>
                 <Image
-                width={96}
-                height={96} unoptimized alt="" src={person.imageUrl} className="mx-auto size-24 rounded-full" />
+                  width={96}
+                  height={96}
+                  unoptimized
+                  alt=""
+                  src={person.imageUrl}
+                  className="mx-auto size-24 rounded-full"
+                />
                 <h3 className="mt-6 text-base/7 font-semibold tracking-tight text-gray-900">{person.name}</h3>
                 <p className="text-sm/6 text-gray-600">{person.role}</p>
               </li>
@@ -472,7 +479,12 @@ export default function AboutPage() {
                 className="relative isolate flex flex-col justify-end overflow-hidden rounded-2xl bg-gray-900 px-8 pb-8 pt-80 sm:pt-48 lg:pt-80"
               >
                 <Image
-                fill unoptimized alt="" src={post.imageUrl} className="absolute inset-0 -z-10 size-full object-cover" />
+                  fill
+                  unoptimized
+                  alt=""
+                  src={post.imageUrl}
+                  className="absolute inset-0 -z-10 size-full object-cover"
+                />
                 <div className="absolute inset-0 -z-10 bg-gradient-to-t from-gray-900 via-gray-900/40" />
                 <div className="absolute inset-0 -z-10 rounded-2xl ring-1 ring-inset ring-gray-900/10" />
 
@@ -480,14 +492,19 @@ export default function AboutPage() {
                   <time dateTime={post.datetime} className="mr-8">
                     {post.date}
                   </time>
-                  <div className="-ml-4 flex items-center gap-x-4">
+                    <div className="-ml-4 flex items-center gap-x-4">
                     <svg viewBox="0 0 2 2" className="-ml-0.5 size-0.5 flex-none fill-white/50">
                       <circle r={1} cx={1} cy={1} />
                     </svg>
                     <div className="flex gap-x-2.5">
                       <Image
-                width={24}
-                height={24} unoptimized alt="" src={post.author.imageUrl} className="size-6 flex-none rounded-full bg-white/10" />
+                        width={24}
+                        height={24}
+                        unoptimized
+                        alt=""
+                        src={post.author.imageUrl}
+                        className="size-6 flex-none rounded-full bg-white/10"
+                      />
                       {post.author.name}
                     </div>
                   </div>
