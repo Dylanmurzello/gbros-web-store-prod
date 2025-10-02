@@ -41,7 +41,7 @@ const log = {
 
 // Config with defaults
 const config = {
-    inputCsv: '/root/JDS-Master-Data-2025-09-18.csv',  // Main data file
+    inputCsv: '/root/data.csv',  // Main data file
     outputCsv: '/root/vendure-products.csv',            // Full import output
     testOutputCsv: '/root/vendure-products-test.csv',  // Test mode output (10 rows)
 };
@@ -273,25 +273,35 @@ async function askShouldClearDb() {
 }
 
 /**
- * Clear the database (nuke all products)
+ * Clear the database (nuke all products AND facets to avoid duplicates)
+ * FIXED: 2025-10-02 02:12 AM - Now explicitly clears junction tables too
+ * Why: TRUNCATE CASCADE wasn't reaching product_facet_values_facet_value junction table
+ * Result: duplicate key violations on that specific PK constraint
  */
 async function clearDatabase() {
-    log.warn('Clearing database...');
+    log.warn('Clearing database (nuking everything product/facet related)...');
     
     return new Promise((resolve, reject) => {
+        // FIXED: 2025-10-02 02:20 AM - Clear in REVERSE order of foreign key constraints
+        // Junction tables have FK constraints, so we clear MAIN tables first with CASCADE
+        // This lets PostgreSQL handle the cleanup of dependent junction tables
         const psql = spawn('psql', [
             '-h', '10.116.0.3',
             '-p', '5432',
             '-U', 'vendure',
             '-d', 'vendure',
-            '-c', 'TRUNCATE product CASCADE;'
+            '-c', `
+                TRUNCATE TABLE product CASCADE;
+                TRUNCATE TABLE facet CASCADE;
+                TRUNCATE TABLE collection CASCADE;
+            `
         ], {
             env: { ...process.env, PGPASSWORD: '4n_jYms9b2gRwzIh8k2llA' }
         });
         
         psql.on('close', (code) => {
             if (code === 0) {
-                log.success('Database cleared!');
+                log.success('Database cleared (CASCADE handled all dependencies)!');
                 resolve();
             } else {
                 log.error('Failed to clear database');

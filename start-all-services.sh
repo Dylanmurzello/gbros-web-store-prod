@@ -46,7 +46,7 @@ start_service() {
 }
 
 # Start Frontend - Next.js doing its thing like the reliable friend it is
-start_service "frontend" "$BASE_DIR/frontend" "npm run dev"
+start_service "frontend" "$BASE_DIR/frontend" "npm run start"
 
 # Start Backend - Vendure backend serving up that sweet API goodness 
 start_service "backend" "$BASE_DIR/backend" "npm run start"

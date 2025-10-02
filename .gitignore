@@ -73,7 +73,7 @@ coverage/
 # Temporary folders
 tmp/
 temp/
-
+legacy/
 # Optional npm cache directory
 .npm
 

@@ -11,15 +11,34 @@ import path from 'path';
 import { config } from './src/vendure-config';
 
 // Path to the test CSV
-const productsCsvFile = '/root/vendure-products-test.csv';
+// FIXED: 2025-10-02 03:00 AM - Using deduplicated CSV (removed duplicate keywords causing FK errors)
+const productsCsvFile = '/root/vendure-products.csv';
 
 // Minimal initial data - we don't want to wipe existing channels/settings
+// FIXED: 2025-10-02 02:55 AM - Added ALL required InitialData fields per Vendure docs
+// Missing shippingMethods/paymentMethods/collections was causing "not iterable" errors
 const initialData = {
     defaultLanguage: 'en' as const,
     defaultZone: 'US',
-    taxRates: [
-        { name: 'Standard Tax', percentage: 0 },
+    countries: [
+        { name: 'United States', code: 'US', zone: 'US' },
     ],
+    taxRates: [
+        { name: 'Standard Tax', percentage: 20 },
+    ],
+    shippingMethods: [
+        { name: 'Standard Shipping', price: 0 },
+    ],
+    paymentMethods: [
+        {
+            name: 'Credit Card',
+            handler: {
+                code: 'square-payment',
+                arguments: [],
+            },
+        },
+    ],
+    collections: [],
 };
 
 // Remove JobQueuePlugin to avoid spam during import
