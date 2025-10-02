@@ -12,6 +12,8 @@
     "start": "concurrently npm:start:*"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.901.0",
+    "@aws-sdk/lib-storage": "^3.901.0",
     "@square/web-payments-sdk-types": "^1.78.5",
     "@vendure/admin-ui-plugin": "3.4.2",
     "@vendure/asset-server-plugin": "3.4.2",
@@ -28,6 +30,8 @@
   "devDependencies": {
     "@vendure/cli": "3.4.2",
     "concurrently": "9.2.1",
+    "csv-parse": "^6.1.0",
+    "csv-stringify": "^6.6.0",
     "typescript": "5.8.2"
   }
 }

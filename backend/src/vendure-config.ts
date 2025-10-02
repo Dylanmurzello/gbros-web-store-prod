@@ -6,7 +6,7 @@ import {
     NativeAuthenticationStrategy,
 } from '@vendure/core';
 import { defaultEmailHandlers, EmailPlugin, FileBasedTemplateLoader } from '@vendure/email-plugin';
-import { AssetServerPlugin } from '@vendure/asset-server-plugin';
+import { AssetServerPlugin, configureS3AssetStorage } from '@vendure/asset-server-plugin';
 import { AdminUiPlugin } from '@vendure/admin-ui-plugin';
 import { GraphiqlPlugin } from '@vendure/graphiql-plugin';
 import { HardenPlugin } from '@vendure/harden-plugin'; // SECURITY FIX: 2025-10-01 - Protects against GraphQL complexity attacks & disables dev features in prod 🛡️
@@ -134,7 +134,31 @@ export const config: VendureConfig = {
         GraphiqlPlugin.init(),
         AssetServerPlugin.init({
             route: 'assets',
-            assetUploadDir: path.join(__dirname, '../static/assets'),
+            assetUploadDir: path.join(__dirname, '../static/assets'), // Temp dir for uploads before pushing to S3
+            // FIX: 2025-10-02 - Switched to DigitalOcean Spaces (S3-compatible) to avoid storage issues on main droplet 💾
+            // Images now stored in DO Spaces instead of local filesystem - scales infinitely! 🚀
+            storageStrategyFactory: configureS3AssetStorage({
+                bucket: process.env.DO_SPACES_BUCKET || (() => {
+                    throw new Error('🚨 DO_SPACES_BUCKET not set! Configure your DigitalOcean Spaces bucket name.');
+                })(),
+                credentials: {
+                    accessKeyId: process.env.DO_SPACES_KEY || (() => {
+                        throw new Error('🚨 DO_SPACES_KEY not set! Get this from DigitalOcean API > Spaces Keys.');
+                    })(),
+                    secretAccessKey: process.env.DO_SPACES_SECRET || (() => {
+                        throw new Error('🚨 DO_SPACES_SECRET not set! Get this from DigitalOcean API > Spaces Keys.');
+                    })(),
+                },
+                nativeS3Configuration: {
+                    endpoint: process.env.DO_SPACES_ENDPOINT || 'https://nyc3.digitaloceanspaces.com',
+                    forcePathStyle: false, // DO Spaces uses virtual-hosted-style URLs
+                    region: process.env.DO_SPACES_REGION || 'nyc3',
+                },
+                // FIX: 2025-10-02 - Upload all files as PUBLIC so we don't have to manage 83k file permissions individually! 🙏
+                nativeS3UploadConfiguration: {
+                    ACL: 'public-read', // Makes every uploaded file publicly accessible
+                },
+            }),
             // For local dev, the correct value for assetUrlPrefix should
             // be guessed correctly, but for production it will usually need
             // to be set manually to match your production url.
