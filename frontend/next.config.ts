@@ -30,6 +30,12 @@ const nextConfig: NextConfig = {
         hostname: 'tailwindcss.com',
         pathname: '/**',
       },
+      // FIX: 2025-10-02 - CDN for DigitalOcean Spaces assets 🚀
+      {
+        protocol: 'https',
+        hostname: 'cdn.gbrosapp.com',
+        pathname: '/**',
+      },
       // FIX: 2025-10-01 - Production domain now configurable via env var, STRICT MODE: no fallback!
       // If this crashes, it means NEXT_PUBLIC_PRODUCTION_DOMAIN is missing from .env.local
       ...(process.env.NEXT_PUBLIC_PRODUCTION_DOMAIN ? [{
