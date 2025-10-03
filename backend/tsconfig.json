@@ -11,12 +11,14 @@
     "strict": true,
     "sourceMap": false,
     "skipLibCheck": true,
+    "rootDir": "./src",
     "outDir": "./dist",
     "baseUrl": "./"
   },
   "exclude": [
     "node_modules",
     "migration.ts",
+    "populate-products.ts",
     "src/plugins/**/ui/*",
     "src/plugins/**/dashboard/*",
     "admin-ui",

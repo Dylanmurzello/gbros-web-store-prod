@@ -278,6 +278,10 @@ export default function CheckoutPage() {
       })
       
       if (isErrorResult(paymentResult)) {
+        // CRITICAL FIX 2025-10-02: Refresh cart state after payment failure 🔄
+        // Backend transitions order to ArrangingPayment, frontend needs to know!
+        // Without this, user gets "can only modify in AddingItems" error on retry
+        await refreshCart();
         throw new Error(paymentResult.message || 'Payment failed')
       }
 
@@ -299,6 +303,9 @@ export default function CheckoutPage() {
     } catch (err) {
       console.error('Checkout error:', err)
       setError(err instanceof Error ? err.message : 'An error occurred during checkout')
+      // CRITICAL FIX 2025-10-02: Also refresh on ANY checkout error 
+      // Ensures frontend state matches backend state for retry attempts
+      await refreshCart();
     } finally {
       setLoading(false)
     }

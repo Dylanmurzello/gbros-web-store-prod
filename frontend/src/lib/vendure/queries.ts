@@ -21,24 +21,27 @@ export const SEARCH_PRODUCTS = `
           }
         }
         currencyCode
-        facetValueIds
-        collectionIds
-      }
-      facetValues {
-        count
-        facetValue {
-          id
-          code
-          name
-          facet {
-            id
-            code
-            name
-          }
-        }
-      }
+      facetValueIds
+      collectionIds
     }
+    # DISABLED 2025-10-02: This facetValues block was causing 25 second load times with 9000+ facets
+    # Only enable this when you're ready to implement filters and load it separately/lazily
+    # See: https://github.com/vendure-ecommerce/vendure/issues/1257
+    # facetValues {
+    #   count
+    #   facetValue {
+    #     id
+    #     code
+    #     name
+    #     facet {
+    #       id
+    #       code
+    #       name
+    #     }
+    #   }
+    # }
   }
+}
 `;
 
 export const GET_COLLECTIONS = `
