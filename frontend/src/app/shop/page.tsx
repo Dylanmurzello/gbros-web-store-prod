@@ -64,56 +64,118 @@ interface SearchResult {
   }
 }
 
-// filters gonna filter, haters gonna hate 🎯
-const filters = [
-  {
-    id: 'material',
-    name: 'Material',
-    options: [
-      { value: 'metal', label: 'Metal' },
-      { value: 'crystal', label: 'Crystal' },
-      { value: 'acrylic', label: 'Acrylic' },
-      { value: 'wood', label: 'Wood' },
-      { value: 'resin', label: 'Resin' },
-    ],
-  },
-  {
-    id: 'category',
-    name: 'Category',  
-    options: [
-      { value: 'trophies', label: 'Trophies' },
-      { value: 'plaques', label: 'Plaques' },
-      { value: 'medals', label: 'Medals' },
-      { value: 'custom', label: 'Custom Awards' },
-      { value: 'corporate', label: 'Corporate Awards' },
-    ],
-  },
-  {
-    id: 'size',
-    name: 'Size',
-    options: [
-      { value: 'small', label: 'Small (6"-10")' },
-      { value: 'medium', label: 'Medium (11"-15")' },
-      { value: 'large', label: 'Large (16"-20")' },
-      { value: 'xlarge', label: 'Extra Large (21"+)' },
-    ],
-  },
-]
+// Dynamic filter structure - categories loaded from Vendure! 🎯
+// No more hardcoded bs, we got real data now fr fr
+interface FilterOption {
+  value: string // facetValueId
+  label: string // display name
+  count: number // product count
+}
+
+interface Filter {
+  id: string
+  name: string
+  options: FilterOption[]
+}
 
 export default function ShopPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [filters, setFilters] = useState<Filter[]>([]) // Dynamic filters from Vendure 🔥
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({})
   const [currentPage, setCurrentPage] = useState(1)
   const [totalProducts, setTotalProducts] = useState(0)
   const productsPerPage = 12
 
+  // Load categories on mount 🎯
+  useEffect(() => {
+    fetchCategories()
+  }, [])
+
   // fetch that product data like we're on a mission 🚀
   useEffect(() => {
     fetchProducts()
   }, [currentPage, selectedFilters]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch category facets from Vendure (dynamic filters baby!) 🔥
+  const fetchCategories = async () => {
+    try {
+      const query = `
+        query GetCategoryFacets {
+          facets {
+            items {
+              id
+              code
+              name
+              values {
+                id
+                code
+                name
+              }
+            }
+          }
+        }
+      `
+      
+      interface FacetValue {
+        id: string
+        code: string
+        name: string
+      }
+      
+      interface Facet {
+        id: string
+        code: string
+        name: string
+        values: FacetValue[]
+      }
+      
+      interface FacetsResult {
+        facets: {
+          items: Facet[]
+        }
+      }
+      
+      const result = await graphqlClient.request<FacetsResult>(query)
+      
+      // Find the category facet and build filter options
+      const categoryFacet = result.facets.items.find((f) => f.code === 'category')
+      
+      if (categoryFacet) {
+        // Fetch product counts for each category
+        const categoryOptions = await Promise.all(
+          categoryFacet.values.map(async (val) => {
+            const countResult = await graphqlClient.request<SearchResult>(SEARCH_PRODUCTS, {
+              input: {
+                facetValueIds: [val.id],
+                take: 0,
+                groupByProduct: true
+              }
+            })
+            return {
+              value: val.id,
+              label: val.name,
+              count: countResult.search.totalItems
+            }
+          })
+        )
+        
+        // Sort by product count (most popular first)
+        categoryOptions.sort((a, b) => b.count - a.count)
+        
+        setFilters([{
+          id: 'category',
+          name: 'Category',
+          options: categoryOptions
+        }])
+      }
+    } catch (error) {
+      console.error('Failed to fetch categories:', error)
+      // No categories? No problem, filters just won't show 🤷
+    }
+  }
 
   const fetchProducts = async () => {
     try {
@@ -286,9 +348,10 @@ export default function ShopPage() {
                                   </svg>
                                 </div>
                               </div>
-                              <label htmlFor={`${section.id}-${optionIdx}-mobile`} className="text-sm text-gray-500">
+                              <label htmlFor={`${section.id}-${optionIdx}-mobile`} className="text-sm text-gray-500 flex-1">
                                 {option.label}
                               </label>
+                              <span className="text-xs text-gray-400 ml-2">({option.count})</span>
                             </div>
                           ))}
                         </div>
@@ -388,9 +451,10 @@ export default function ShopPage() {
                                   </svg>
                                 </div>
                               </div>
-                              <label htmlFor={`${section.id}-${optionIdx}`} className="text-sm text-gray-600">
+                              <label htmlFor={`${section.id}-${optionIdx}`} className="text-sm text-gray-600 flex-1">
                                 {option.label}
                               </label>
+                              <span className="text-xs text-gray-400 ml-2">({option.count})</span>
                             </div>
                           ))}
                         </div>

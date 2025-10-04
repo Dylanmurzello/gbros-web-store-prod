@@ -44,7 +44,18 @@ const config = {
     inputCsv: '/root/data.csv',  // Main data file
     outputCsv: '/root/vendure-products.csv',            // Full import output
     testOutputCsv: '/root/vendure-products-test.csv',  // Test mode output (10 rows)
+    filterConfigPath: '/root/product-filter-config.json',  // Filter config for CLASS codes
 };
+
+// Load filter config (CLASS codes to KEEP/DELETE)
+// FEATURE: 2025-10-03 - Smart filtering to remove vinyl/signage trash, keep trophy/engravable products 🎯
+let filterConfig = null;
+if (fs.existsSync(config.filterConfigPath)) {
+    filterConfig = JSON.parse(fs.readFileSync(config.filterConfigPath, 'utf-8'));
+    log.info(`Loaded filter config: ${filterConfig.KEEP.length} KEEP, ${filterConfig.DELETE.length} DELETE`);
+} else {
+    log.warn('No filter config found - importing ALL products (including vinyl/signage trash)');
+}
 
 // Create readline interface for user input
 const rl = readline.createInterface({
@@ -186,9 +197,25 @@ async function transformCsv(inputPath, outputPath, mode = 'full') {
     
     log.success(`Found ${jdsRows.length} products in JDS CSV`);
     
-    // TEST MODE: Take only first 10 rows (before deduplication)
+    // FILTER: Remove vinyl/signage trash based on CLASS code
+    if (filterConfig && filterConfig.DELETE) {
+        const beforeFilter = jdsRows.length;
+        jdsRows = jdsRows.filter(row => {
+            const classCode = row['CLASS'];
+            // Keep row if CLASS is in KEEP list OR in REVIEW list (safe default)
+            // Skip row if CLASS is in DELETE list
+            return !filterConfig.DELETE.includes(classCode);
+        });
+        const removed = beforeFilter - jdsRows.length;
+        if (removed > 0) {
+            log.success(`Filtered out ${removed} vinyl/signage products (trash begone! 🗑️)`);
+            log.success(`Remaining: ${jdsRows.length} trophy/engravable products`);
+        }
+    }
+    
+    // TEST MODE: Take only first 10 rows (after filtering but before deduplication)
     if (mode === 'test') {
-        log.warn('TEST MODE: Limiting to first 10 rows from file');
+        log.warn('TEST MODE: Limiting to first 10 rows from filtered data');
         jdsRows = jdsRows.slice(0, 10);
         log.success(`Processing ${jdsRows.length} rows for test import`);
     }
@@ -196,14 +223,16 @@ async function transformCsv(inputPath, outputPath, mode = 'full') {
     log.info('Transforming data to Vendure format...');
     
     const vendureRows = jdsRows.map((row, index) => {
-        const slug = createSlug(row['SHORT DESCRIPTION'] || row['DESCRIPTION 1']);
-        const facets = parseKeywordsToFacets(row['KEYWORD'], row['CLASS']);
+        const productName = row['SHORT DESCRIPTION'] || row['DESCRIPTION 1'] || 'Unnamed Product';
+        const productDesc = row['LONG DESCRIPTION'] || row['SHORT DESCRIPTION'] || '';
+        const slug = createSlug(productName);
+        const facets = parseKeywordsToFacets(row['KEYWORD'], row['CLASS'], productName, productDesc);
         const price = parsePrice(row['LESS THAN CASE PRICE']);
         
         return {
-            name: row['SHORT DESCRIPTION'] || row['DESCRIPTION 1'] || 'Unnamed Product',
+            name: productName,
             slug: slug,
-            description: row['LONG DESCRIPTION'] || row['SHORT DESCRIPTION'] || '',
+            description: productDesc,
             assets: row['LARGE IMAGE'] || '',
             facets: facets,
             optionGroups: '',
@@ -377,25 +406,89 @@ function createSlug(name) {
         .replace(/^-|-$/g, '');
 }
 
-function parseKeywordsToFacets(keywordString, classString) {
+function parseKeywordsToFacets(keywordString, classString, productName, productDescription) {
     const facets = [];
     
-    if (classString && classString !== '') {
-        facets.push(`category:${classString}`);
-    }
+    // SKIP keyword facets entirely - they're 7k duplicates of useless noise
+    // Instead, detect category from product NAME (way smarter!)
+    // FEATURE: 2025-10-03 - Smart category detection instead of cryptic CLASS codes or keyword spam 🧠
     
-    if (keywordString && keywordString !== '') {
-        const keywords = keywordString
-            .split(',')
-            .map(k => k.trim())
-            .filter(k => k.length > 0);
-        
-        keywords.forEach(keyword => {
-            facets.push(`keyword:${keyword}`);
-        });
-    }
+    const category = detectCategory(productName, productDescription, classString);
+    facets.push(`category:${category}`);
     
     return facets.join('|');
+}
+
+/**
+ * Smart category detection based on product name & description
+ * FEATURE: 2025-10-03 - Auto-categorize products into 15-20 clean categories
+ * No more 477 CLASS codes or 7k keyword spam! Just clean, searchable categories 🎯
+ */
+function detectCategory(name, description, classCode) {
+    const text = `${name || ''} ${description || ''}`.toLowerCase();
+    
+    // Trophy & Award categories (most specific first)
+    if (text.match(/trophy|cup\s+trophy|metal\s+cup/i)) return 'Trophies';
+    if (text.match(/\bplaque/i)) return 'Plaques';
+    if (text.match(/medal/i)) return 'Medals & Coins';
+    if (text.match(/crystal|jade\s+glass|glass\s+award/i)) return 'Crystal & Glass Awards';
+    if (text.match(/acrylic\s+award|acrylic.*plaque|acrylic.*trophy/i)) return 'Acrylic Awards';
+    if (text.match(/resin\s+award|resin\s+trophy/i)) return 'Resin Awards';
+    if (text.match(/\bcoin\b/i)) return 'Medals & Coins';
+    
+    // Engravable gift categories
+    if (text.match(/mug|tumbler|cup|bottle|flask|drinkware|camel|yeti|cooler/i)) return 'Drinkware';
+    if (text.match(/leatherette|leather\s+gift/i)) return 'Leatherette Gifts';
+    if (text.match(/keychain|key\s+ring|key\s+tag/i)) return 'Keychains';
+    if (text.match(/clock|timepiece/i)) return 'Clocks';
+    if (text.match(/\bpen\b|pencil|desk\s+set|desk\s+accessory|paperweight/i)) return 'Desk Accessories';
+    if (text.match(/badge|name\s+tag|name\s+plate/i)) return 'Badges & Name Tags';
+    if (text.match(/frame|picture\s+frame/i)) return 'Frames';
+    if (text.match(/\bbox\b|gift\s+box|presentation\s+box/i)) return 'Gift Boxes';
+    
+    // Materials/blank products
+    if (text.match(/sublimation|unisub/i)) return 'Sublimation Blanks';
+    if (text.match(/laserable|laser\s+engrav/i) && !text.match(/award|trophy|plaque/i)) return 'Engravable Blanks';
+    
+    // Promotional items
+    if (text.match(/knife|tool|multi.?tool/i)) return 'Tools & Knives';
+    if (text.match(/golf|ball\s+marker/i)) return 'Golf Gifts';
+    if (text.match(/bag|tote|backpack/i)) return 'Bags';
+    
+    // Fallback to CLASS mapping if available
+    if (filterConfig && filterConfig.categoryMapping && filterConfig.categoryMapping[classCode]) {
+        return filterConfig.categoryMapping[classCode];
+    }
+    
+    // Default catch-all
+    return 'Awards & Gifts';
+}
+
+/**
+ * Check if keyword is just noise (dimensions, technical specs, etc.)
+ * FEATURE: 2025-10-03 - Filter out 8k+ useless keywords like ".51x.75", "100% crystal", etc.
+ */
+function isNoiseKeyword(keyword) {
+    const k = keyword.toLowerCase();
+    
+    // Filter out dimension patterns (.51 x .75, 12"x24", etc.)
+    if (/^\.?\d+[\sx"'-]*x[\sx"'-]*\.?\d+/i.test(k)) return true;
+    if (/^\d+['"]?\s*x\s*\d+['"]?/i.test(k)) return true;
+    
+    // Filter out single numbers/letters
+    if (/^[0-9.]+$/.test(k)) return true;
+    if (/^[a-z]$/.test(k)) return true;
+    
+    // Filter out technical specs that add no search value
+    if (k === 'b_transparent') return true;
+    if (k === '.') return true;
+    if (k === '#1') return true;
+    if (/^\d+%/.test(k)) return true;  // "100% crystal", "100% lead free"
+    
+    // Filter out redundant tape/vinyl keywords if not in vinyl business
+    if (/tape|foam|adhesive|mil/i.test(k) && filterConfig) return true;
+    
+    return false;
 }
 
 function parsePrice(priceString) {
