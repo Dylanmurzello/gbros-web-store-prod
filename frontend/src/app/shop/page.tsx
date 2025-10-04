@@ -1,7 +1,8 @@
 'use client'
 import Image from 'next/image'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import {
   Dialog,
   DialogBackdrop,
@@ -78,7 +79,12 @@ interface Filter {
   options: FilterOption[]
 }
 
-export default function ShopPage() {
+// Separate component to handle search params (Next.js Suspense requirement) 🤷
+function ShopPageContent() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const searchQuery = searchParams.get('search') // Read the ?search= param from URL 🔍
+  
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
@@ -95,9 +101,10 @@ export default function ShopPage() {
   }, [])
 
   // fetch that product data like we're on a mission 🚀
+  // NOW ACTUALLY RESPECTS THE SEARCH QUERY! 🔥
   useEffect(() => {
     fetchProducts()
-  }, [currentPage, selectedFilters]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentPage, selectedFilters, searchQuery]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch category facets from Vendure (dynamic filters baby!) 🔥
   const fetchCategories = async () => {
@@ -192,6 +199,8 @@ export default function ShopPage() {
           take: productsPerPage,
           skip,
           groupByProduct: true,
+          // FINALLY applying the search term from URL! This is why we set up ES fr 🔥
+          ...(searchQuery && { term: searchQuery }),
           ...(facetValueFilters.length > 0 && {
             facetValueIds: facetValueFilters
           })
@@ -207,6 +216,11 @@ export default function ShopPage() {
     } finally {
       setLoading(false)
     }
+  }
+  
+  // Clear search and go back to all products 🧹
+  const clearSearch = () => {
+    router.push('/shop')
   }
 
   // handle filter changes like a boss 💪
@@ -389,9 +403,34 @@ export default function ShopPage() {
 
         <main className="mx-auto max-w-2xl px-4 lg:max-w-7xl lg:px-8">
           <div className="border-b border-gray-200 pt-24 pb-10">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900">Awards & Trophies</h1>
+            {/* Show search results banner when there's an active search 🔍 */}
+            {searchQuery && (
+              <div className="mb-6 bg-indigo-50 border border-indigo-200 rounded-lg p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-indigo-900">
+                    Search results for: <span className="font-bold">&ldquo;{searchQuery}&rdquo;</span>
+                  </p>
+                  <p className="text-xs text-indigo-700 mt-1">
+                    {loading ? 'Searching...' : `Found ${totalProducts} ${totalProducts === 1 ? 'product' : 'products'}`}
+                  </p>
+                </div>
+                <button
+                  onClick={clearSearch}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-white border border-indigo-200 rounded-md hover:bg-indigo-50 transition-colors"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                  Clear search
+                </button>
+              </div>
+            )}
+            
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900">
+              {searchQuery ? `Search: "${searchQuery}"` : 'Awards & Trophies'}
+            </h1>
             <p className="mt-4 text-base text-gray-500">
-              Premium awards and trophies for every achievement. Custom engraving available on all products!
+              {searchQuery 
+                ? `Showing results powered by Elasticsearch. Can't find what you're looking for? Try different keywords!`
+                : 'Premium awards and trophies for every achievement. Custom engraving available on all products!'}
             </p>
           </div>
 
@@ -592,5 +631,21 @@ export default function ShopPage() {
 
       <Footer navigation={footerNavigation} />
     </div>
+  )
+}
+
+// Main export with Suspense boundary (Next.js requirement for useSearchParams) 🎯
+export default function ShopPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
+          <p className="mt-4 text-sm text-gray-600">Loading shop...</p>
+        </div>
+      </div>
+    }>
+      <ShopPageContent />
+    </Suspense>
   )
 }
