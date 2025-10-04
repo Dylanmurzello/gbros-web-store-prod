@@ -405,21 +405,21 @@ function ShopPageContent() {
           <div className="border-b border-gray-200 pt-24 pb-10">
             {/* Show search results banner when there's an active search 🔍 */}
             {searchQuery && (
-              <div className="mb-6 bg-indigo-50 border border-indigo-200 rounded-lg p-4 flex items-center justify-between">
+              <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between shadow-sm">
                 <div>
-                  <p className="text-sm font-medium text-indigo-900">
+                  <p className="text-sm font-medium text-gray-900">
                     Search results for: <span className="font-bold">&ldquo;{searchQuery}&rdquo;</span>
                   </p>
-                  <p className="text-xs text-indigo-700 mt-1">
+                  <p className="text-xs text-gray-500 mt-1">
                     {loading ? 'Searching...' : `Found ${totalProducts} ${totalProducts === 1 ? 'product' : 'products'}`}
                   </p>
                 </div>
                 <button
                   onClick={clearSearch}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-white border border-indigo-200 rounded-md hover:bg-indigo-50 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                 >
                   <XMarkIcon className="h-4 w-4" />
-                  Clear search
+                  Clear
                 </button>
               </div>
             )}
