@@ -27,6 +27,32 @@ static_resources:
                 allow_headers: "keep-alive,user-agent,cache-control,content-type,content-transfer-encoding,x-accept-content-transfer-encoding,x-accept-response-streaming,x-user-agent,x-grpc-web,grpc-timeout,vendure-auth-token"
                 allow_credentials: true
                 max_age: "1728000"
+              # SECURITY FIX: 2025-10-04 - Security headers for all HTTP responses 🔒
+              response_headers_to_add:
+              - header:
+                  key: "X-Frame-Options"
+                  value: "SAMEORIGIN"
+                append_action: OVERWRITE_IF_EXISTS_OR_ADD
+              - header:
+                  key: "X-Content-Type-Options"
+                  value: "nosniff"
+                append_action: OVERWRITE_IF_EXISTS_OR_ADD
+              - header:
+                  key: "X-XSS-Protection"
+                  value: "1; mode=block"
+                append_action: OVERWRITE_IF_EXISTS_OR_ADD
+              - header:
+                  key: "Referrer-Policy"
+                  value: "strict-origin-when-cross-origin"
+                append_action: OVERWRITE_IF_EXISTS_OR_ADD
+              - header:
+                  key: "Permissions-Policy"
+                  value: "geolocation=(), microphone=(), camera=(), payment=(self)"
+                append_action: OVERWRITE_IF_EXISTS_OR_ADD
+              - header:
+                  key: "Content-Security-Policy"
+                  value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gbrosapp.com https://*.google.com https://*.googleapis.com https://accounts.google.com https://js.squareup.com https://web.squarecdn.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://cdn.gbrosapp.com https://*.google.com https://*.googleapis.com https://web.squarecdn.com; frame-src 'self' https://*.google.com https://js.squareup.com; object-src 'none'; base-uri 'self'; form-action 'self';"
+                append_action: OVERWRITE_IF_EXISTS_OR_ADD
               routes:
               # SECURITY FIX: 2025-09-30 - Block common exploit attempts before they hit apps 🛡️
               # Based on actual attacks seen in logs (WordPress, PHPUnit, path traversal, etc.)
@@ -225,6 +251,11 @@ static_resources:
           "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
           stat_prefix: ingress_https
           codec_type: AUTO
+          # PERFORMANCE FIX: 2025-10-04 - Enable HTTP/2 for faster multiplexed connections 🚀
+          http2_protocol_options:
+            max_concurrent_streams: 128
+            initial_stream_window_size: 65536
+            initial_connection_window_size: 1048576
           route_config:
             name: local_route_https
             virtual_hosts:
@@ -240,6 +271,36 @@ static_resources:
                 allow_headers: "keep-alive,user-agent,cache-control,content-type,content-transfer-encoding,x-accept-content-transfer-encoding,x-accept-response-streaming,x-user-agent,x-grpc-web,grpc-timeout,vendure-auth-token"
                 allow_credentials: true
                 max_age: "1728000"
+              # SECURITY FIX: 2025-10-04 - Security headers for all HTTPS responses 🔒
+              response_headers_to_add:
+              - header:
+                  key: "Strict-Transport-Security"
+                  value: "max-age=31536000; includeSubDomains; preload"
+                append_action: OVERWRITE_IF_EXISTS_OR_ADD
+              - header:
+                  key: "X-Frame-Options"
+                  value: "SAMEORIGIN"
+                append_action: OVERWRITE_IF_EXISTS_OR_ADD
+              - header:
+                  key: "X-Content-Type-Options"
+                  value: "nosniff"
+                append_action: OVERWRITE_IF_EXISTS_OR_ADD
+              - header:
+                  key: "X-XSS-Protection"
+                  value: "1; mode=block"
+                append_action: OVERWRITE_IF_EXISTS_OR_ADD
+              - header:
+                  key: "Referrer-Policy"
+                  value: "strict-origin-when-cross-origin"
+                append_action: OVERWRITE_IF_EXISTS_OR_ADD
+              - header:
+                  key: "Permissions-Policy"
+                  value: "geolocation=(), microphone=(), camera=(), payment=(self)"
+                append_action: OVERWRITE_IF_EXISTS_OR_ADD
+              - header:
+                  key: "Content-Security-Policy"
+                  value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gbrosapp.com https://*.google.com https://*.googleapis.com https://accounts.google.com https://js.squareup.com https://web.squarecdn.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://cdn.gbrosapp.com https://*.google.com https://*.googleapis.com https://web.squarecdn.com; frame-src 'self' https://*.google.com https://js.squareup.com; object-src 'none'; base-uri 'self'; form-action 'self';"
+                append_action: OVERWRITE_IF_EXISTS_OR_ADD
               routes:
               # SECURITY FIX: 2025-09-30 - Same exploit blocking for HTTPS traffic 🔒
               # Block WebDAV methods
@@ -592,6 +653,10 @@ static_resources:
         typed_config:
           "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
           common_tls_context:
+            # PERFORMANCE FIX: 2025-10-04 - ALPN for HTTP/2 negotiation 🚀
+            alpn_protocols:
+            - h2          # HTTP/2
+            - http/1.1    # HTTP/1.1 fallback
             tls_certificates:
             - certificate_chain:
                 filename: "/opt/ssl/fullchain.pem"

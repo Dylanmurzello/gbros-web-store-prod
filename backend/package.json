@@ -14,10 +14,12 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.901.0",
     "@aws-sdk/lib-storage": "^3.901.0",
+    "@elastic/elasticsearch": "^9.1.1",
     "@square/web-payments-sdk-types": "^1.78.5",
     "@vendure/admin-ui-plugin": "3.4.2",
     "@vendure/asset-server-plugin": "3.4.2",
     "@vendure/core": "3.4.2",
+    "@vendure/elasticsearch-plugin": "^3.4.3",
     "@vendure/email-plugin": "3.4.2",
     "@vendure/graphiql-plugin": "3.4.2",
     "@vendure/harden-plugin": "^3.4.2",

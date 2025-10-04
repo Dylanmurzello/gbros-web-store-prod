@@ -1,10 +1,10 @@
 import {
     DefaultJobQueuePlugin,
     DefaultSchedulerPlugin,
-    DefaultSearchPlugin,
     VendureConfig,
     NativeAuthenticationStrategy,
 } from '@vendure/core';
+import { ElasticsearchPlugin } from '@vendure/elasticsearch-plugin';
 import { defaultEmailHandlers, EmailPlugin, FileBasedTemplateLoader } from '@vendure/email-plugin';
 import { AssetServerPlugin, configureS3AssetStorage } from '@vendure/asset-server-plugin';
 import { AdminUiPlugin } from '@vendure/admin-ui-plugin';
@@ -175,7 +175,23 @@ export const config: VendureConfig = {
         }),
         DefaultSchedulerPlugin.init(),
         DefaultJobQueuePlugin.init({ useDatabaseForBuffer: true }),
-        DefaultSearchPlugin.init({ bufferUpdates: false, indexStockStatus: true }),
+        // ELASTICSEARCH: 2025-10-04 - Using dedicated ES on DB droplet for faster search 🔍
+        // No more mid PostgreSQL full-text search, we got the real deal now fr fr
+        // Host points to DB layer droplet (10.116.0.3) where ES container runs
+        ElasticsearchPlugin.init({
+            host: 'http://10.116.0.3',  // DB droplet IP (private network, we secure)
+            port: 9200,                  // Standard ES port
+            indexPrefix: 'gbros',        // Prefix for all indices (keeps it organized)
+            
+            // Buffer updates = batch index updates instead of real-time
+            // Reduces load on ES, slight delay in search index updates (worth it)
+            bufferUpdates: true,
+            
+            // Hydrate relations = include images/assets in search results
+            // This way we don't need extra queries to get product images
+            hydrateProductRelations: ['variants.featuredAsset', 'assets'],
+            hydrateProductVariantRelations: ['featuredAsset'],
+        }),
         EmailPlugin.init({
             devMode: true,
             outputPath: path.join(__dirname, '../static/email/test-emails'),
